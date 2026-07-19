@@ -270,38 +270,6 @@ Avoid for:
 
 ---
 
-# Interview Questions
-
-### Why use Context API?
-
-To avoid **prop drilling** and share data across components.
-
-### What does `createContext()` do?
-
-Creates a context object.
-
-### What does `Provider` do?
-
-Makes data available to all child components.
-
-### What does `useContext()` do?
-
-Reads the nearest context value.
-
-### Can Context update values?
-
-Yes. Pass state and its setter in the provider's `value`.
-
-```jsx
-value={{ user, setUser }}
-```
-
-### Is Context API a state management library?
-
-Not exactly. It is a way to **share state**, not replace advanced state management solutions.
-
----
-
 This is actually how **Context API is used in real-world React applications**. Instead of calling `useContext()` everywhere, we usually wrap it inside a **custom hook**.
 
 The pattern looks like this:
