@@ -640,15 +640,404 @@ queryFn: fetchUsers
 
 ---
 
-## What to Learn Next
 
-Once you're comfortable with `useQuery`, the next React Query topics are:
+# 1. `useMutation`
 
-1. **Mutations (`useMutation`)** – Create, update, and delete data.
-2. **Query Invalidation** – Refresh related queries after a mutation.
-3. **Optimistic Updates** – Update the UI immediately before the server responds.
-4. **Pagination** – Fetch data page by page.
-5. **Infinite Queries** – Implement "Load More" and infinite scrolling.
-6. **Prefetching** – Load data before the user navigates to a page.
+## What is it?
 
-For a fresher-to-intermediate React developer, mastering these topics will cover the majority of React Query usage in interviews and real-world CRUD applications.
+`useMutation` is used to **change data on the server**.
+
+Unlike `useQuery` (which fetches data), `useMutation` is used for:
+
+* ➕ Create (POST)
+* ✏️ Update (PUT/PATCH)
+* ❌ Delete (DELETE)
+* 🔐 Login / Register
+
+### Simple Syntax
+
+```jsx
+const mutation = useMutation({
+  mutationFn: addUser,
+});
+```
+
+Call the mutation:
+
+```jsx
+mutation.mutate({
+  firstName: "John",
+  age: 25,
+});
+```
+
+### Useful States
+
+```jsx
+mutation.isPending   // Loading
+mutation.isSuccess   // Success
+mutation.isError     // Error
+mutation.error       // Error object
+```
+
+### Easy to Remember
+
+```text
+useQuery      → GET data
+
+useMutation   → POST, PUT, PATCH, DELETE
+```
+
+---
+
+# 2. Query Invalidation
+
+## What is it?
+
+After a mutation (Create, Update, Delete), the cached data becomes **outdated**.
+
+**Query Invalidation** tells React Query:
+
+> "This data is stale. Fetch the latest data from the server."
+
+### Example
+
+Current users:
+
+```text
+John
+Alex
+Mike
+```
+
+You add:
+
+```text
+David
+```
+
+Database:
+
+```text
+John
+Alex
+Mike
+David
+```
+
+But the UI still shows:
+
+```text
+John
+Alex
+Mike
+```
+
+So invalidate the query:
+
+```jsx
+const queryClient = useQueryClient();
+
+const mutation = useMutation({
+  mutationFn: addUser,
+
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["users"],
+    });
+  },
+});
+```
+
+React Query automatically refetches the users list, and the UI updates.
+
+### Easy Flow
+
+```text
+useMutation
+      ↓
+Data Changed
+      ↓
+invalidateQueries()
+      ↓
+useQuery runs again
+      ↓
+Updated UI
+```
+
+---
+
+## Difference Between Them
+
+| `useMutation`                     | Query Invalidation                         |
+| --------------------------------- | ------------------------------------------ |
+| Changes data on the server        | Refreshes outdated cached data             |
+| Used for POST, PUT, PATCH, DELETE | Usually called after a successful mutation |
+| Sends the request                 | Triggers `useQuery` to fetch fresh data    |
+
+### One-line interview answers
+
+* **`useMutation`**: "It is used to create, update, or delete data on the server."
+* **Query Invalidation**: "It marks cached data as stale so React Query refetches the latest data after a mutation."
+
+
+---
+
+Here's a **simple React + Axios + TanStack Query** example that demonstrates both:
+
+* ✅ `useMutation`
+* ✅ `Query Invalidation`
+
+We'll use **DummyJSON**.
+
+> **Note:** `https://dummyjson.com/users/add` simulates adding a user. It does **not** permanently save data because it's a demo API, but it's perfect for learning.
+
+---
+
+## Folder Structure
+
+```text
+src/
+│── api.js
+│── main.jsx
+│── App.jsx
+```
+
+---
+
+# Step 1: Install
+
+```bash
+npm install axios @tanstack/react-query
+```
+
+---
+
+# Step 2: main.jsx
+
+```jsx
+import React from "react";
+import ReactDOM from "react-dom/client";
+
+import {
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
+
+import App from "./App";
+
+const queryClient = new QueryClient();
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <QueryClientProvider client={queryClient}>
+    <App />
+  </QueryClientProvider>
+);
+```
+
+---
+
+# Step 3: api.js
+
+```jsx
+import axios from "axios";
+
+// GET Users
+export const fetchUsers = async () => {
+  const res = await axios.get("https://dummyjson.com/users");
+
+  return res.data.users;
+};
+
+// POST User
+export const addUser = async (user) => {
+  const res = await axios.post(
+    "https://dummyjson.com/users/add",
+    user
+  );
+
+  return res.data;
+};
+```
+
+---
+
+# Step 4: App.jsx
+
+```jsx
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchUsers, addUser } from "./api";
+
+function App() {
+  const queryClient = useQueryClient();
+
+  // GET Users
+  const {
+    data: users,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["users"],
+    queryFn: fetchUsers,
+  });
+
+  // POST User
+  const mutation = useMutation({
+    mutationFn: addUser,
+
+    onSuccess: () => {
+      alert("User Added!");
+
+      // Refresh users list
+      queryClient.invalidateQueries({
+        queryKey: ["users"],
+      });
+    },
+  });
+
+  const handleAddUser = () => {
+    mutation.mutate({
+      firstName: "Shahbaz",
+      age: 24,
+    });
+  };
+
+  if (isLoading) return <h2>Loading...</h2>;
+
+  if (error) return <h2>Something went wrong</h2>;
+
+  return (
+    <div style={{ padding: "20px" }}>
+      <h1>Users</h1>
+
+      <button onClick={handleAddUser}>
+        Add User
+      </button>
+
+      <br />
+      <br />
+
+      {mutation.isPending && <p>Adding user...</p>}
+
+      <ul>
+        {users.map((user) => (
+          <li key={user.id}>
+            {user.firstName}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default App;
+```
+
+---
+
+# What happens?
+
+### 1. Page Loads
+
+```text
+useQuery
+
+↓
+
+GET /users
+
+↓
+
+Users displayed
+```
+
+---
+
+### 2. Click "Add User"
+
+```text
+Button Click
+
+↓
+
+mutation.mutate()
+
+↓
+
+POST /users/add
+
+↓
+
+User Added
+```
+
+---
+
+### 3. onSuccess Runs
+
+```jsx
+onSuccess: () => {
+  queryClient.invalidateQueries({
+    queryKey: ["users"],
+  });
+}
+```
+
+This tells React Query:
+
+> "The `users` data is now outdated. Fetch it again."
+
+---
+
+### 4. React Query Automatically Refetches
+
+```text
+GET /users
+
+↓
+
+Updated list
+```
+
+---
+
+# Key Lines to Remember for Interviews
+
+### Fetch data
+
+```jsx
+const { data } = useQuery({
+  queryKey: ["users"],
+  queryFn: fetchUsers,
+});
+```
+
+### Change data
+
+```jsx
+const mutation = useMutation({
+  mutationFn: addUser,
+});
+```
+
+### Call mutation
+
+```jsx
+mutation.mutate({
+  firstName: "Shahbaz",
+});
+```
+
+### Refresh cache after success
+
+```jsx
+onSuccess: () => {
+  queryClient.invalidateQueries({
+    queryKey: ["users"],
+  });
+}
+```
+
+This example demonstrates the complete flow that interviewers commonly expect:
+
+**`useQuery` → `useMutation` → `onSuccess` → `invalidateQueries` → automatic refetch of updated data.**
